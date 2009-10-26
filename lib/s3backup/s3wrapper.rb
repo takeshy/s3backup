@@ -1,6 +1,5 @@
 require 'cgi'
 require 'aws/s3'
-require 's3backup/crypt'
 module S3backup
   class S3Wrapper
     attr_reader :bucket

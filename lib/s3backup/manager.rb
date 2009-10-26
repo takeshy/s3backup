@@ -3,6 +3,7 @@ require 'tempfile'
 require 'fileutils'
 require 's3backup/s3log'
 require 's3backup/tree_info'
+require 's3backup/crypt'
 module S3backup
   class Manager
     DEFAULT_BUF_READ_SIZE=1024*1024*128
