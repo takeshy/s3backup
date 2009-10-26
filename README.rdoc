@@ -27,9 +27,10 @@ To use remotebackup,you should prepare backup configuretion file by yaml such be
  proxy_password: login password for proxy server if you use proxy.
 *If directories isn't specified when restore, it restores all directories in bucket.
 
-command:
+== COMMAND:
 
-for backup:
+=== backup
+
   s3backup [-f configuration file] [-v verbose message] [-l path for log] [-h help]
 
   configuration file  path to file written above contents. default is ./backup.yml
@@ -37,7 +38,8 @@ for backup:
   path for log        defaut starndard output.
   help                help message
 
-for restore:
+=== restore
+
   s3backup -r [-f configuration file] [-v verbose message] [-l path for log] [-o output dir] [-h help]
 
   configuration file  path to file written above contents. default is ./backup.yml
