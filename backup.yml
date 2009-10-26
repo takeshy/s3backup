@@ -1,0 +1,8 @@
+bucket: "bucket name"
+directories:
+- "absolute path to directory for backup/restore"
+- "absolute path to directory for backup/restore"
+access_key_id: 'Amazon access_key_id'
+secret_access_key: 'Amazon secret_access_key'
+password: 'password for aes. (optional)'
+salt: 'HexString(16 length) (must when password is specified) '
