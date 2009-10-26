@@ -14,18 +14,18 @@ It can be Cryptnize upload files if password and salt are configured.
 
 To use remotebackup,you should prepare backup configuretion file by yaml such below.
 ------------------------------------------------------------
-bucket: "bucket name"
-directories:
-- "absolute path to directory for backup/restore"
-- "absolute path to directory for backup/restore"
-access_key_id: 'Amazon access_key_id'
-secret_access_key: 'Amazon secret_access_key'
-password: 'password for aes. (optional)'
-salt: 'HexString(16 length) (must when password is specified) '
-proxy_host: proxy host address if you use proxy.
-proxy_port: proxy port if you use proxy.
-proxy_user: login name for proxy server if you use proxy.
-proxy_password: login password for proxy server if you use proxy.
+ bucket: "bucket name"
+ directories:
+ - "absolute path to directory for backup/restore"
+ - "absolute path to directory for backup/restore"
+ access_key_id: 'Amazon access_key_id'
+ secret_access_key: 'Amazon secret_access_key'
+ password: 'password for aes. (optional)'
+ salt: 'HexString(16 length) (must when password is specified) '
+ proxy_host: proxy host address if you use proxy.
+ proxy_port: proxy port if you use proxy.
+ proxy_user: login name for proxy server if you use proxy.
+ proxy_password: login password for proxy server if you use proxy.
 ------------------------------------------------------------
 *If directories isn't specified when restore, it restores all directories in bucket.
 
