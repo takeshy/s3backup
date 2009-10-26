@@ -13,7 +13,7 @@ It can be Cryptnize upload files if password and salt are configured.
 == SYNOPSIS:
 
 To use remotebackup,you should prepare backup configuretion file by yaml such below.
-------------------------------------------------------------
+<pre>
 bucket: "bucket name"
 directories:
 - "absolute path to directory for backup/restore"
@@ -26,7 +26,7 @@ proxy_host: proxy host address if you use proxy.
 proxy_port: proxy port if you use proxy.
 proxy_user: login name for proxy server if you use proxy.
 proxy_password: login password for proxy server if you use proxy.
-------------------------------------------------------------
+</pre>
 *If directories isn't specified when restore, it restores all directories in bucket.
 
 command:
