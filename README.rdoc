@@ -25,6 +25,9 @@ To use remotebackup,you should prepare backup configuretion file by yaml such be
  proxy_port: proxy port if you use proxy.
  proxy_user: login name for proxy server if you use proxy.
  proxy_password: login password for proxy server if you use proxy.
+
+*You shoud change bucket name for each machine.If a bucket name is same on machineA and machineB,
+it is possible machineB overwirte machineA's backupfiles,because key is absolute path.
 *If directories isn't specified when restore, it restores all directories in bucket.
 
 == COMMAND:

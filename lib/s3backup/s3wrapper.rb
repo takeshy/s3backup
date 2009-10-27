@@ -47,6 +47,7 @@ module S3backup
       key_name = CGI.escape(key)
       data = nil
       if AWS::S3::S3Object.exists? key_name,@bucket_name
+        S3log.info("S3Object.value(#{key_name})")
         data =  AWS::S3::S3Object.value(key_name,@bucket_name)
       end
       return data
