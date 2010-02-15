@@ -1,8 +1,16 @@
-bucket: "bucket name"
+bucket: "bucket name. it is necessary uniq of the world wide"
 directories:
 - "absolute path to directory for backup/restore"
-- "absolute path to directory for backup/restore"
+- "iterate directory as you like"
 access_key_id: 'Amazon access_key_id'
 secret_access_key: 'Amazon secret_access_key'
-password: 'password for aes. (optional)'
+password: 'password encrypt files for aes. (optional)'
 salt: 'HexString(16 length) (must when password is specified) '
+buffer_size: 'number of byte max 50000000000 (optional default 32000000)'
+max_retry_count: 'number of retry of post if post failed.(optional default 10)'
+proxy_host: 'address of proxy server(optional)'
+proxy_port: 'port of proxy server(optional)'
+proxy_user: 'user name of proxy server(optional)'
+proxy_password: 'password of proxy server(optional)'
+log_level: 'output log level. value is debug or info or warn or error(optional default info)'
+temporary: 'temporary directory path. default(/tmp)

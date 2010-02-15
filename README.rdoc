@@ -16,18 +16,20 @@ To use remotebackup,you should prepare backup configuretion file by yaml such be
  bucket: "bucket name"
  directories:
  - "absolute path to directory for backup/restore"
- - "absolute path to directory for backup/restore"
+ - "iterate directory as you like"
  access_key_id: 'Amazon access_key_id'
  secret_access_key: 'Amazon secret_access_key'
  password: 'password for aes. (optional)'
  salt: 'HexString(16 length) (must when password is specified) '
+ buffer_size: 'number of byte max 50000000000 (optional default 32000000)'
+ max_retry_count: 'number of retry of post if post failed.(optional default 10)'
  proxy_host: proxy host address if you use proxy.
  proxy_port: proxy port if you use proxy.
  proxy_user: login name for proxy server if you use proxy.
  proxy_password: login password for proxy server if you use proxy.
+ log_level: 'output log level. value is debug or info or warn or error(optional default info)'
+ temporary: 'temporary directory path. default(/tmp)
 
-*You shoud change bucket name for each machine.If a bucket name is same on machineA and machineB,
-it is possible machineB overwirte machineA's backupfiles,because key is absolute path.
 *If directories isn't specified when restore, it restores all directories in bucket.
 
 == COMMAND:

@@ -1,30 +1,112 @@
 require 'yaml'
+require 'sqlite3'
 module S3backup
   class TreeInfo
-    attr_reader :fileMap
-    def initialize(target)
-      @dir_map={}
-      @orig = nil
-      if target.nil?
-        @fileMap = {:file => Hash.new,:symlink => Hash.new,:directory => Hash.new}
-      elsif File.directory?(target)
-        @orig = {:type=>"directory",:target=>target}
-        @fileMap = {:file => Hash.new,:symlink => Hash.new,:directory => Hash.new}
-        stat = File.stat(target)
-        @fileMap[:directory][target] = {:mtime => stat.mtime, :atime => stat.atime}
-        @dir_map[target] = {:mtime => stat.mtime, :atime => stat.atime,:file=>{},:symlink=>{}}
-        makeFileMap(target)
-      elsif File.file?(target)
-        @orig = {:type=>"file",:target=>target}
-        load_yaml(File.read(target))
-        make_dir_map
-      else
-        @orig = {:type=>"data",:target=>""}
-        load_yaml(target)
-        make_dir_map
+    attr_reader :db_name,:db
+    def make_table
+      sql = "create table directory ( id INTEGER PRIMARY KEY ,name varchar(2048), mtime integer, parent_directory_id integer)"
+      @db.execute(sql)
+      sql = "create table file ( name varchar(2048), size  integer, mtime integer,directory_id integer)"
+      @db.execute(sql)
+      sql = "create table symlink ( name varchar(2048), source varchar(2048),directory_id integer)"
+      @db.execute(sql)
+      sql = "CREATE INDEX idx_directory_name ON directory(name)"
+      @db.execute(sql)
+      sql = "CREATE INDEX idx_directory_parent_directory_id ON directory(parent_directory_id)"
+      @db.execute(sql)
+      sql = "CREATE INDEX idx_file_directory_id ON file(directory_id)"
+      @db.execute(sql)
+      sql = "CREATE INDEX idx_file_name  ON file(name)"
+      @db.execute(sql)
+      sql = "CREATE INDEX idx_symlink_name  ON symlink(name)"
+      @db.execute(sql)
+      sql = "CREATE INDEX idx_symlink_directory_id  ON symlink(directory_id)"
+      @db.execute(sql)
+    end
+    def check_dirs(p_id,p_name)
+      @db.execute('select id,name from directory where parent_directory_id = ?',p_id) do |row|
+        id = row[0]
+        name = row[1]
+        if File.basename(name) == File.basename(p_name)
+          sql = "insert into file(name,size,mtime,directory_id) values (:name, :size, :mtime,:directory_id)"
+          @db.execute(sql,:name=>"zetteiarienainamae#{id}",:size=>0,:mtime =>0,:directory_id=>p_id)
+        end
+        check_dirs(id,name)
       end
     end
-    def makeFileMap(dir)
+    def convert_yaml_to_sqlite3(file_map)
+      file_map[:directory].keys().sort{|a,b| a<=>b}.each do |key|
+        file_at = file_map[:directory][key]
+        sql = "insert into directory(name,mtime) values (:name, :mtime)"
+        @db.execute(sql,:name=>key,:mtime => file_at[:mtime] )
+      end
+      @db.execute('select id,name from directory' ) do |row|
+        dir_id = row[0].to_i
+        parent = File.dirname(row[1])
+        @db.execute('select id from directory where name =?',parent ) do |row|
+          @db.execute("update directory set parent_directory_id = #{row[0]} where id = #{dir_id}")
+        end
+      end
+      #for bug (same name directory was not backuped before)
+      @db.execute('select id,name from directory order by id limit 1') do |row|
+        p_id = row[0]
+        name = row[1]
+        check_dirs(p_id,name)
+      end
+      file_map[:file].each do |key,val|
+        file_at = file_map[:file][key]
+        dir_name = File.dirname(key)
+        dir_id = nil
+        @db.execute('select id from directory where name=?',dir_name ) do |row|
+          #rowは結果の配列
+          dir_id = row[0].to_i
+        end
+        unless dir_id
+          STDERR.print "directory name isn't exist ignore #{dir_name}"
+          next
+        end
+        sql = "insert into file(name,size,mtime,directory_id) values (:name, :size, :mtime,:directory_id)"
+        @db.execute(sql,:name=>key,:size=>file_at[:size],:mtime => file_at[:date], :directory_id=>dir_id)
+      end
+      file_map[:symlink].each do |key,val|
+        file_at = file_map[:symlink][key]
+        dir_name = File.dirname(key)
+        sql="select id from directory where name = :name"
+        dir_id = nil
+        @db.execute('select id from directory where name=?',dir_name ) do |row|
+          #rowは結果の配列
+          dir_id = row[0].to_i
+        end
+        unless dir_id
+          STDERR.print "directory name isn't exist ignore #{dir_name}"
+          next
+        end
+        sql = "insert into symlink(name,source,directory_id) values (:name, :source,:directory_id)"
+        @db.execute(sql,:name=>key,:source=>file_at[:source],:directory_id=>dir_id)
+      end
+    end
+    def initialize(opt)
+      @db_name = opt[:db]
+      @db = SQLite3::Database.new(opt[:db])
+      if opt[:format].nil?
+        make_table
+      elsif opt[:format] == :directory
+        make_table
+        stat = File.stat(opt[:directory])
+        sql = "insert into directory(name,mtime) values (:name, :mtime)"
+        @db.execute(sql,:name=>opt[:directory],:mtime =>stat.mtime)
+        dir_id = nil
+        @db.execute('select id from directory where name=?',opt[:directory]) do |row|
+          #rowは結果の配列
+          dir_id = row[0].to_i
+        end
+        makeFileMap(opt[:directory],dir_id)
+      elsif opt[:format] == :yaml
+        make_table
+        convert_yaml_to_sqlite3(YAML.load(opt[:data]))
+      end
+    end
+    def makeFileMap(dir,id)
       Dir.entries(dir).each do |e|
         if e == "." or e == ".."
           next
@@ -32,147 +114,134 @@ module S3backup
         name = dir + "/" + e
         if File.directory?(name)
           stat = File.stat(name)
-          @dir_map[name] = {:mtime => stat.mtime, :atime => stat.atime,:file=>{},:symlink=>{}}
-          @fileMap[:directory][name] = {:mtime => stat.mtime, :atime => stat.atime}
-          makeFileMap(name)
+          sql = "insert into directory(name,mtime,parent_directory_id) values (:name, :mtime,:parent_directory_id)"
+          @db.execute(sql,:name=>name,:mtime =>stat.mtime,:parent_directory_id=>id)
+          dir_id = nil
+          @db.execute('select id from directory where name=?',name) do |row|
+            #rowは結果の配列
+            dir_id = row[0].to_i
+          end
+          makeFileMap(name,dir_id)
         elsif File.symlink?(name)
-          @dir_map[dir][:symlink][name] = {:source => File.readlink(name)}
-          @fileMap[:symlink][name] = {:source => File.readlink(name)}
+          sql = "insert into symlink(name,source,directory_id) values (:name, :source,:directory_id)"
+          @db.execute(sql,:name=>name,:source=>File.readlink(name),:directory_id=>id)
         else
           stat = File.stat(name)
-          @dir_map[dir][:file][name] ={:size => stat.size,:date => stat.mtime}
-          @fileMap[:file][name] = {:size => stat.size,:date => stat.mtime}
+          sql = "insert into file(name,size,mtime,directory_id) values (:name, :size, :mtime,:directory_id)"
+          @db.execute(sql,:name=>name,:size=>stat.size,:mtime => stat.mtime, :directory_id=>id)
         end
       end
     end
-    def make_dir_map
-      @fileMap[:directory].each do |k,v|
-        @dir_map[k] = {:mtime => v[:mtime], :atime => v[:atime],:file=>{},:symlink=>{}}
+    def update_dir(dir_info)
+      result = @db.execute("select id from directory where name = ?",dir_info[:name])
+      p_id = nil
+      id = nil
+      @db.execute('select id from directory where name =?',File.dirname(dir_info[:name])) do |row|
+        p_id = row[0]
       end
-      @fileMap[:file].each do |k,v|
-        target = @dir_map[File.dirname(k)]
-        #不整合だけど適当に作る
-        unless target
-          S3log.warn("Tree Data isn't correct.#{@orig.inspect}")
-          target = {:mtime => DateTime.now.to_s,:atime => DateTime.now.to_s,:file=>{},:symlink=>{}}
-          @dir_map[File.dirname(k)] = target
-        end
-        target[:file][k] = {:size => v[:size], :date => v[:date]}
+      if result.length != 0
+        id = result[0][0]
+        @db.execute("delete from file where directory_id = #{id}")
+        @db.execute("delete from symlink where directory_id = #{id}")
+
+        @db.execute("update directory  set mtime = ?,parent_directory_id = ?" + 
+                    " where id = ?",dir_info[:mtime],p_id,id)
+      else
+        @db.execute("insert into directory(name,mtime,parent_directory_id) values(?,?,?)",
+          dir_info[:name],dir_info[:mtime],p_id)
+        result = @db.execute("select id from directory where name = ?",dir_info[:name])
+        id = result[0][0]
       end
-      @fileMap[:symlink].each do |k,v|
-        target = @dir_map[File.dirname(k)]
-        #不整合だけど適当に作る
-        unless target
-          S3log.warn("Tree Data isn't correct.#{@orig.inspect}")
-          target = {:mtime => DateTime.now.to_s,:atime => DateTime.now.to_s,:file=>{},:symlink=>{}}
-          @dir_map[File.dirname(k)] = target
-        end
-        target[:symlink][k] = {:source => v[:source]}
+      dir_info[:files].each do |f|
+        @db.execute("insert into file(name,mtime,size,directory_id) values(?,?,?,?)",
+                    f[:name],f[:mtime],f[:size],id)
+      end
+      dir_info[:links].each do |f|
+        @db.execute("insert into symlink(name,source,directory_id) values(?,?,?)",f[:name],f[:source],id)
       end
     end
-    def get_dir_info(name)
-      return @dir_map[name]
-    end
-    def update_dir_map(name,dir_info)
-      @dir_map[name][:file] = dir_info[:file]
-      @dir_map[name][:symlink] = dir_info[:symlink]
-      @dir_map[name][:mtime] = dir_info[:mtime]
-      @dir_map[name][:atime] = dir_info[:atime]
-    end
-    def update_dir(name,dir_info)
-      @dir_map[name] = {:file => {},:symlink=>{}} unless @dir_map[name]
-      @dir_map[name][:file].each do |k,v|
-        @fileMap[:file].delete(k)
+    def get_level_directory(tree,p_id,level)
+      @db.execute('select id,name,mtime from directory where parent_directory_id = ?',p_id) do |row|
+        id = row[0]
+        name = row[1]
+        mtime = row[2]
+        tree[level] = {} unless tree[level]
+        tree[level][name] = {:mtime=>mtime}
+        get_level_directory(tree,id,level+1)
       end
-      @dir_map[name][:symlink].each do |k,v|
-        @fileMap[:symlink].delete(k)
-      end
-      @fileMap[:directory][name] = {:mtime => dir_info[:mtime],:atime =>dir_info[:atime]}
-      dir_info[:file].each do |k,v|
-        @fileMap[:file][k] = v
-      end
-      dir_info[:symlink].each do |k,v|
-        @fileMap[:symlink][k] = v
-      end
-      update_dir_map(name,dir_info)
-    end
-    def load_yaml(data)
-      @fileMap = YAML.load(data)
-    end
-    def dump_yaml()
-      YAML.dump(@fileMap)
     end
     def hierarchie(dir)
-      count = dir.count("/")
-      tree = []
-      @fileMap[:directory].each do |k,v|
-        if k.index(dir) != 0
-          next
-        end
-        level = k.count("/") - count
-        tree[level] = {} unless tree[level]
-        tree[level][k] = v
+      tree=[]
+      result = @db.execute('select id,name,mtime from directory where name = ?',dir)
+      if result.length == 0
+        S3log.error("#{dir} is not stored.")
+        exit(-1)
       end
+      id = result[0][0]
+      name = result[0][1]
+      mtime = result[0][2]
+      tree[0] = {} 
+      tree[0][name]={:mtime=>mtime}
+      get_level_directory(tree,id,1)
       return tree
     end
-    def diff(target)
-      modify_dir_map = {}
-      modify_files = []
-      modify_links = []
-
-      remove_dirs = target.fileMap[:directory].keys -  @fileMap[:directory].keys
-      add_dirs = @fileMap[:directory].keys - target.fileMap[:directory].keys 
-
-      new_info = @fileMap[:file]
-      old_info = target.fileMap[:file]
-
-      remove_files = old_info.keys - new_info.keys
-      remove_files.each do |f|
-        dir = File.dirname(f)
-        modify_dir_map[dir] = true
+    def modify(target)
+      now_id = 0
+      while 1
+        result = @db.execute("select id,name,mtime from directory where id > ? limit 1",now_id)
+        break if result.length == 0
+        now_id = result[0][0].to_i
+        name = result[0][1]
+        mtime = result[0][2]
+        files = []
+        links = []
+        t_result = target.db.execute("select id,name from directory where name = ?",name)
+        if t_result.length != 0
+          t_id = t_result[0][0]
+          t_files = target.db.execute("select name,size,mtime from file where directory_id = ? order by name",t_id)
+          files = @db.execute("select name,size,mtime from file where directory_id = ? order by name",now_id)
+          if t_files == files
+            t_links = target.db.execute("select name,source from symlink where directory_id = ? order by name",t_id)
+            links = @db.execute("select name,source from symlink where directory_id = ? order by name",now_id)
+            if t_links == links
+              next
+            end
+          end
+        end
+        file_infos = []
+        files.each do |f|
+          file_infos.push({:name=>f[0],:size=>f[1],:mtime=>f[2]})
+        end
+        sym_infos = []
+        links.each do |l|
+          sym_infos.push({:name=>l[0],:source=>l[1]})
+        end
+        yield({:name => name,:mtime=>mtime,:files => file_infos ,:links => sym_infos})
       end
-      add_files = new_info.keys - old_info.keys
-      add_files.each do |f|
-        dir = File.dirname(f)
-        modify_dir_map[dir] = true
-      end
-
-      new_info.each do |k,v|
-        next unless old_info[k]
-        if old_info[k][:date] != v[:date] or old_info[k][:size] != v[:size]
-          modify_files.push(k)
-          dir = File.dirname(k)
-          modify_dir_map[dir] = true
+    end
+    def remove(target)
+      now_id = 0
+      while 1
+        t_result = target.db.execute("select id,name from directory where id > ? limit 1",now_id)
+        break if t_result.length == 0
+        now_id = t_result[0][0].to_i
+        name = t_result[0][1]
+        result = @db.execute("select id,name from directory where name = ?",name)
+        if result.length == 0
+          yield({:name => name})
         end
       end
-
-      new_info = @fileMap[:symlink]
-      old_info = target.fileMap[:symlink]
-
-      remove_links = old_info.keys - new_info.keys
-      remove_links.each do |f|
-        dir = File.dirname(f)
-        modify_dir_map[dir] = true
-      end
-
-      add_links = new_info.keys - old_info.keys
-      add_links.each do |f|
-        dir = File.dirname(f)
-        modify_dir_map[dir] = true
-      end
-
-      new_info.each do |k,v|
-        next unless old_info[k]
-        if old_info[k][:source] != v[:source]
-          modify_links.push(k)
-          dir = File.dirname(k)
-          modify_dir_map[dir] = true
+    end
+    def close(delete=false)
+      @db.close
+      if delete
+        if File.exist?(@db_name)
+          File.unlink(@db_name)
+        end
+        if File.exist?(@db_name + ".gz")
+          File.unlink(@db_name+".gz")
         end
       end
-      return {
-        :directory => {:add => add_dirs,:modify => modify_dir_map.keys - add_dirs - remove_dirs,:remove => remove_dirs},
-        :file => {:add => add_files,:modify => modify_files,:remove => remove_files},
-        :symlink => {:add => add_links,:modify => modify_links,:remove => remove_links}}
     end
   end
 end

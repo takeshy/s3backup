@@ -1,3 +1,4 @@
+require 'sqlite3'
 require 's3backup/s3wrapper'
 require 's3backup/s3log'
 require 's3backup/manager'
@@ -11,11 +12,19 @@ module S3backup
         @s3_obj = S3Wrapper.new(config,false)
       rescue => err
         S3log.error(err.backtrace.join("\n")+"\n"+err.message)
-        exit -1
+        exit(-1)
       end
       @manager = Manager.new(@s3_obj,config)
     end
     def check_config(config)
+      if config["log_level"]
+        if config["log_level"] =~ /debug|info|warn|error/i
+          S3log.set_level(config["log_level"])
+        else 
+          S3log.error("log_level:#{config['log_level']} is not debug or info or warn or error") 
+          exit(-1)
+        end
+      end
       if config["directories"] 
         if config["directories"].class != Array 
           dir = config["directories"] 
@@ -26,14 +35,14 @@ module S3backup
       end
     end
     def start
+      S3log.error("directories is not defined") unless @directories
       begin
-        @directories = @manager.get_target_bases unless @directories
         @directories.each do |dir|
           @manager.restore(dir,@output_dir)
         end
       rescue => err
         S3log.error(err.backtrace.join("\n")+"\n"+err.message)
-        exit -1
+        exit(-1)
       end
     end
   end

@@ -35,18 +35,18 @@ module S3backup
           }
           opt.on("-h","--help","print this message and quit") {
             puts opt.help
-            exit 0
+            exit(0)
           }
           opt.parse!(arguments)
         end
       rescue OptionParser::ParseError => err
         S3log.error(err.message)
-        exit 1
+        exit(-1)
       end
       S3log.set_debug(options[:verbose])
       if !File.file?(options[:config_file])
         S3log.error("config #{options[:config_file]} is not exist.")
-        exit 1
+        exit(-1)
       end
       if options[:log]
         S3log.set_logfile(File.open(options[:log],"a"))
@@ -55,7 +55,7 @@ module S3backup
         require 's3backup/restore'
         if !File.directory?(options[:output_dir])
           S3log.error("output directory #{options[:output_dir]} is not exist.")
-          exit 1
+          exit(-1)
         end
         rt = Restore.new(options[:output_dir],YAML.load_file(options[:config_file]))
         rt.start

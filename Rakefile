@@ -14,8 +14,8 @@ $hoe = Hoe.spec 's3backup' do
   self.developer 'Takeshi Morita', 'morita@ibrains.co.jp'
   self.post_install_message = 'PostInstall.txt' # TODO remove if post-install message not required
   self.rubyforge_name       = self.name # TODO this is default value
-  self.extra_deps         = [['aws-s3','>= 0.6.2']]
-
+  self.extra_deps <<  ['aws-s3','>= 0.6.2']
+  self.extra_deps <<  ['sqlite3-ruby']
 end
 
 require 'newgem/tasks'
