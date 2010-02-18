@@ -62,3 +62,7 @@ gem install sqlite3
 === 0.8.5 2010-02-15
 * mod bug if  symbolic link was differed  before, backup is failed.
 * tar command output information level.
+
+=== 0.8.6 2010-02-17
+* add GC.start each directory send.
+* change resume timing to each 10 send times. before each 10 directory

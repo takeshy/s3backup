@@ -23,6 +23,7 @@ module S3backup
       @target = target
       @resume = false
       @temporary = "/tmp"
+      @resume_counter = 0
       set_config(config)
     end
     def set_config(config)
@@ -177,6 +178,7 @@ module S3backup
             end
             @target.post(key_name,data)
             i+=1
+            @resume_counter += 1
           end
         rescue EOFError
         end
@@ -221,20 +223,20 @@ module S3backup
       end
       data = nil;
       GC.start
-      cnt=0
       #前回と今回のファイル・ツリーを比較
       tree_info.modify(old_tree) do |dir_info|
-        cnt+=1
         S3log.debug("diff_info=#{dir_info[:name]}")
         #更新されたディレクトリをアップロード
         store_directory(dir_info[:name])
         #前回のファイル・ツリー情報のうち、今回アップデートしたディレクトリ情報ファイル情報を更新
         old_dir_map = old_tree.update_dir(dir_info)
-        if cnt != 0 and cnt % 10 == 0
+        if @resume_counter >=  10
           #更新したファイル・ツリー情報をアップロード(途中で失敗しても、resumeできるようにするため。)
           to_gz(old_tree.db_name,true)
           @target.post(target_db_name,File.read(old_tree.db_name + ".gz"))
+          @resume_counter = 0
         end
+        GC.start
       end
       tree_info.remove(old_tree) do |dir_info|
         delete_direcory(dir_info[:name])
