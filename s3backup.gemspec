@@ -35,7 +35,8 @@ Gem::Specification.new do |s|
     "lib/s3backup/restore.rb",
     "lib/s3backup/s3log.rb",
     "lib/s3backup/s3wrapper.rb",
-    "lib/s3backup/tree_info.rb"
+    "lib/s3backup/tree_info.rb",
+    "s3backup.gemspec"
   ]
   s.homepage = "http://github.com/takeshy/s3backup"
   s.licenses = ["MIT"]
