@@ -1,7 +1,5 @@
 require 'optparse'
 require 'yaml'
-require 's3backup/s3log'
-
 module S3backup
   class CLI
     DEFAULT_CONFIG='./backup.yml'
@@ -52,7 +50,7 @@ module S3backup
         S3log.set_logfile(File.open(options[:log],"a"))
       end
       if options[:restore]
-        require 's3backup/restore'
+        FileUtils.mkdir_p(options[:output_dir])
         if !File.directory?(options[:output_dir])
           S3log.error("output directory #{options[:output_dir]} is not exist.")
           exit(-1)
@@ -60,7 +58,6 @@ module S3backup
         rt = Restore.new(options[:output_dir],YAML.load_file(options[:config_file]))
         rt.start
       else
-        require 's3backup/backup'
         bk = Backup.new(YAML.load_file(options[:config_file]))
         bk.start
       end

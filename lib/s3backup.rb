@@ -1,5 +1,11 @@
-$:.unshift(File.dirname(__FILE__)) unless
-  $:.include?(File.dirname(__FILE__)) || $:.include?(File.expand_path(File.dirname(__FILE__)))
+require 's3backup/backup'
+require 's3backup/cli'
+require 's3backup/crypt'
+require 's3backup/manager'
+require 's3backup/restore'
+require 's3backup/restore'
+require 's3backup/s3log'
+require 's3backup/s3wrapper'
+require 's3backup/tree_info'
 module S3backup
-  VERSION = '0.8.6'
 end

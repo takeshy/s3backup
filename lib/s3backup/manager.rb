@@ -1,9 +1,6 @@
 require 'cgi'
 require 'time'
 require 'fileutils'
-require 's3backup/s3log'
-require 's3backup/tree_info'
-require 's3backup/crypt'
 module S3backup
   class Manager
     DEFAULT_BUF_READ_SIZE=1024*1024*32
@@ -292,7 +289,7 @@ module S3backup
           dir_len = k.length
           relative_path = k.slice(top_dir_len,dir_len - top_dir_len)
           dir = output_dir + relative_path
-          File.utime(now,Time.parse(v[:mtime]),dir)
+          File.utime(now,Time.at(v[:mtime]),dir)
         end
       }
     end

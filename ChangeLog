@@ -1,0 +1,72 @@
+=== 0.8.7 2011-12-30
+* Jeweler
+* Time object store integer in sqlite3 because time object couldn't store.
+
+=== 0.8.6 2010-02-17
+* add GC.start each directory send.
+* change resume timing to each 10 send times. before each 10 directory
+
+=== 0.8.5 2010-02-15
+* mod bug if  symbolic link was differed  before, backup is failed.
+* tar command output information level.
+
+=== 0.8.4 2010-02-13
+* mod bug if directory name is so long,backup is failed.
+* mod bug temporary file was remained.
+
+=== 0.8.3 2010-02-12
+* change dependency gem  sqlite3 to sqlite3-ruby
+
+=== 0.8.2 2010-02-11
+* remove dependency sqlite3 from Rakefile. for that reazon you should install sqlite3 manually.
+gem install sqlite3
+
+=== 0.8.1 2010-02-11
+* mod bug if directory name is same , that can't restore(because it was not backuped). 
+* change memory to sqlite3.
+* add config  temporary. temporary is directory for temporary file 
+* resume is mandatory.
+
+=== 0.7.2 2010-01-29
+* mod bug if directory name is started '-' 
+* dereese use memory
+
+=== 0.7.01 2010-01-27
+* mod bug if passward is not set. very sorry.
+* change resume function  default off. because use huge memory.
+* default max_retry_count 20 to 30 because resume function change off.
+
+=== 0.6.10 2010-01-25
+* mod bug if directory name has '#' 
+
+=== 0.6.9 2010-01-20
+* modify problem for backup taget is huge,memory is burned out
+* default max_retry_count 10 to 20
+
+=== 0.6.8 2010-01-19
+* default log level debug to info
+
+=== 0.6.7 2010-01-19
+* default max_retry_count 6 to 10
+* add config log_level
+
+=== 0.6.6 2010-01-19
+* add config max_retry_count
+* if ocurred "Connection reset by peer",retry  max_retry_count times. default 6 waiting (30*try_count) second next post.
+* show http://scie.nti.st/2008/3/14/amazon-s3-and-connection-reset-by-peer
+* don't use raise,change  exit and error log
+* config BUFESIZE to buffer_size
+* mod bug if directory name has '\' 
+  
+=== 0.6.4 2010-01-18
+* mod bug if directory name has non english and shell special char
+* retry 5 times if data post fails.
+
+=== 0.6.3 2010-01-16
+* mod Access Error if the bucket was not found
+* mod bug if directory name has white space
+
+=== 0.0.1 2009-10-21
+
+* 1 major enhancement:
+  * Initial release

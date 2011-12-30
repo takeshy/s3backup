@@ -29,7 +29,7 @@ module S3backup
         name = row[1]
         if File.basename(name) == File.basename(p_name)
           sql = "insert into file(name,size,mtime,directory_id) values (:name, :size, :mtime,:directory_id)"
-          @db.execute(sql,:name=>"zetteiarienainamae#{id}",:size=>0,:mtime =>0,:directory_id=>p_id)
+          @db.execute(sql,:name=>"absolutely_no_exist_file_name#{id}",:size=>0,:mtime =>0,:directory_id=>p_id)
         end
         check_dirs(id,name)
       end
@@ -38,7 +38,7 @@ module S3backup
       file_map[:directory].keys().sort{|a,b| a<=>b}.each do |key|
         file_at = file_map[:directory][key]
         sql = "insert into directory(name,mtime) values (:name, :mtime)"
-        @db.execute(sql,:name=>key,:mtime => file_at[:mtime] )
+        @db.execute(sql,:name=>key,:mtime => file_at[:mtime].to_i )
       end
       @db.execute('select id,name from directory' ) do |row|
         dir_id = row[0].to_i
@@ -66,7 +66,7 @@ module S3backup
           next
         end
         sql = "insert into file(name,size,mtime,directory_id) values (:name, :size, :mtime,:directory_id)"
-        @db.execute(sql,:name=>key,:size=>file_at[:size],:mtime => file_at[:date], :directory_id=>dir_id)
+        @db.execute(sql,:name=>key,:size=>file_at[:size],:mtime => file_at[:date].to_i, :directory_id=>dir_id)
       end
       file_map[:symlink].each do |key,val|
         file_at = file_map[:symlink][key]
@@ -94,7 +94,7 @@ module S3backup
         make_table
         stat = File.stat(opt[:directory])
         sql = "insert into directory(name,mtime) values (:name, :mtime)"
-        @db.execute(sql,:name=>opt[:directory],:mtime =>stat.mtime)
+        @db.execute(sql,:name=>opt[:directory],:mtime =>stat.mtime.to_i)
         dir_id = nil
         @db.execute('select id from directory where name=?',opt[:directory]) do |row|
           #rowは結果の配列
@@ -115,7 +115,7 @@ module S3backup
         if File.directory?(name)
           stat = File.stat(name)
           sql = "insert into directory(name,mtime,parent_directory_id) values (:name, :mtime,:parent_directory_id)"
-          @db.execute(sql,:name=>name,:mtime =>stat.mtime,:parent_directory_id=>id)
+          @db.execute(sql,:name=>name,:mtime =>stat.mtime.to_i,:parent_directory_id=>id)
           dir_id = nil
           @db.execute('select id from directory where name=?',name) do |row|
             #rowは結果の配列
@@ -128,7 +128,7 @@ module S3backup
         else
           stat = File.stat(name)
           sql = "insert into file(name,size,mtime,directory_id) values (:name, :size, :mtime,:directory_id)"
-          @db.execute(sql,:name=>name,:size=>stat.size,:mtime => stat.mtime, :directory_id=>id)
+          @db.execute(sql,:name=>name,:size=>stat.size,:mtime => stat.mtime.to_i, :directory_id=>id)
         end
       end
     end
@@ -145,16 +145,16 @@ module S3backup
         @db.execute("delete from symlink where directory_id = #{id}")
 
         @db.execute("update directory  set mtime = ?,parent_directory_id = ?" + 
-                    " where id = ?",dir_info[:mtime],p_id,id)
+                    " where id = ?",dir_info[:mtime].to_i,p_id,id)
       else
         @db.execute("insert into directory(name,mtime,parent_directory_id) values(?,?,?)",
-          dir_info[:name],dir_info[:mtime],p_id)
+          dir_info[:name],dir_info[:mtime].to_i,p_id)
         result = @db.execute("select id from directory where name = ?",dir_info[:name])
         id = result[0][0]
       end
       dir_info[:files].each do |f|
         @db.execute("insert into file(name,mtime,size,directory_id) values(?,?,?,?)",
-                    f[:name],f[:mtime],f[:size],id)
+                    f[:name],f[:mtime].to_i,f[:size],id)
       end
       dir_info[:links].each do |f|
         @db.execute("insert into symlink(name,source,directory_id) values(?,?,?)",f[:name],f[:source],id)
@@ -164,9 +164,9 @@ module S3backup
       @db.execute('select id,name,mtime from directory where parent_directory_id = ?',p_id) do |row|
         id = row[0]
         name = row[1]
-        mtime = row[2]
+        mtime = row[2].to_i
         tree[level] = {} unless tree[level]
-        tree[level][name] = {:mtime=>mtime}
+        tree[level][name] = {:mtime=>mtime.to_i}
         get_level_directory(tree,id,level+1)
       end
     end
@@ -179,7 +179,7 @@ module S3backup
       end
       id = result[0][0]
       name = result[0][1]
-      mtime = result[0][2]
+      mtime = result[0][2].to_i
       tree[0] = {} 
       tree[0][name]={:mtime=>mtime}
       get_level_directory(tree,id,1)
@@ -192,7 +192,7 @@ module S3backup
         break if result.length == 0
         now_id = result[0][0].to_i
         name = result[0][1]
-        mtime = result[0][2]
+        mtime = result[0][2].to_i
         files = []
         links = []
         t_result = target.db.execute("select id,name from directory where name = ?",name)
@@ -210,13 +210,13 @@ module S3backup
         end
         file_infos = []
         files.each do |f|
-          file_infos.push({:name=>f[0],:size=>f[1],:mtime=>f[2]})
+          file_infos.push({:name=>f[0],:size=>f[1],:mtime=>f[2].to_i})
         end
         sym_infos = []
         links.each do |l|
           sym_infos.push({:name=>l[0],:source=>l[1]})
         end
-        yield({:name => name,:mtime=>mtime,:files => file_infos ,:links => sym_infos})
+        yield({:name => name,:mtime=>mtime.to_i,:files => file_infos ,:links => sym_infos})
       end
     end
     def remove(target)

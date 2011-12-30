@@ -1,7 +1,4 @@
 require 'sqlite3'
-require 's3backup/s3wrapper'
-require 's3backup/s3log'
-require 's3backup/manager'
 module S3backup
   class Restore
     def initialize(output_dir,config)
